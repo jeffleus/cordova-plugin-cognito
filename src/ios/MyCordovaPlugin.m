@@ -45,20 +45,67 @@
   NSLog(@"%@", phrase);
 }
 
+//- (void)login:(CDVInvokedUrlCommand *)command {
+//    NSMutableDictionary* options = [command.arguments objectAtIndex:0];
+//
+//    NSString *username = [options objectForKey:@"username"];
+//    NSString *password = [options objectForKey:@"password"];
+//    NSLog(@"Login as %@, %@", username, password);
+//    [cognitoPlugin loginUser:username withPassword:password];
+//
+//    //create a pluginResult to report back the init results and return to the command delegate
+//    CDVPluginResult *pluginResult = [CDVPluginResult
+//                                     resultWithStatus:CDVCommandStatus_OK
+//                                     messageAsString:@"Login successful"];
+//    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//
+//}
+
+- (NSDictionary*)getSessionAsDictionary:(AWSCognitoIdentityUserSession *)session {
+//setup a dictioanry for the tokens (id, access, refresh) and the expiration
+    NSMutableDictionary* sessionDict = [NSMutableDictionary dictionaryWithCapacity:3];
+//copy the token string for each of the (3) tokens
+    [sessionDict setObject:session.idToken.tokenString forKey:@"idToken"];
+    [sessionDict setObject:session.idToken.tokenString forKey:@"accessToken"];
+    [sessionDict setObject:session.refreshToken.tokenString forKey:@"refreshToken"];
+//setup a date Formatter
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    NSLocale *enUSPOSIXLocale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    [dateFormatter setLocale:enUSPOSIXLocale];
+    [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
+//use formatter to convert expiration to a String for passing back to calling js
+    NSString *iso8601String = [dateFormatter stringFromDate:session.expirationTime];
+    NSLog(@"%@", iso8601String);
+    [sessionDict setObject:iso8601String forKey:@"expirationTime"];
+//return the dictionary for marshalling back to JS side of things
+    return sessionDict;
+}
+
 - (void)login:(CDVInvokedUrlCommand *)command {
     NSMutableDictionary* options = [command.arguments objectAtIndex:0];
     
     NSString *username = [options objectForKey:@"username"];
     NSString *password = [options objectForKey:@"password"];
     NSLog(@"Login as %@, %@", username, password);
-    [cognitoPlugin loginUser:username withPassword:password];
-    
-    //create a pluginResult to report back the init results and return to the command delegate
-    CDVPluginResult *pluginResult = [CDVPluginResult
-                                     resultWithStatus:CDVCommandStatus_OK
-                                     messageAsString:@"Login successful"];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    [cognitoPlugin loginUser:username withPassword:password withCompletionHandler:^(AWSCognitoIdentityUserSession *session) {
+        
+        //create a pluginResult to report back the login results
+        CDVPluginResult *pluginResult;
+        //check nil session from completionHandler for a fail condition and report error to plugin client
+        if ( session == nil ) {
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Cognito login attempt failed!"];
+        }
+        //otherwise, convert the session to a Dictionary and return to plugin client with success
+        else {
+            NSDictionary *sessionDict = [self getSessionAsDictionary:session];
+            pluginResult = [CDVPluginResult
+                                             resultWithStatus:CDVCommandStatus_OK
+                                             messageAsDictionary:sessionDict];
+        }
+        //execute the command delete to send the results (success or fail) to the plugin client
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 
+    }];
 }
 
 - (void)getDate:(CDVInvokedUrlCommand *)command {

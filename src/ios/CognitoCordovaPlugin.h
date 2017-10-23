@@ -18,8 +18,9 @@
 	- (void)loginUser:(NSString *)username withPassword:(NSString *)password;
 
  	- (void)init:(CDVInvokedUrlCommand*)command;
-//    - (void)login:(CDVInvokedUrlCommand*)command;
-	- (void)getToken:(CDVInvokedUrlCommand*)command;
+    - (void)login:(CDVInvokedUrlCommand*)command;
+    - (void)loginUser:(NSString *)username withPassword:(NSString *)password withCompletionHandler:(void(^)(AWSCognitoIdentityUserSession *session)) completion;
+    - (void)getToken:(CDVInvokedUrlCommand*)command;
 	- (void)logout:(CDVInvokedUrlCommand*)command;
 
 @end

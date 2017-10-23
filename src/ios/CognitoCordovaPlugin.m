@@ -132,6 +132,65 @@ AWSServiceConfiguration *serviceConfig;
     }];
 }
 
+// WIP - Async loginUser
+// Trying to use the completion handler to provide a callback mechanism so that this can work async on background thread
+// but my obj-c skills are very rusty and need time or help to get this setup...
+//
+- (void)loginUser:(NSString *)username withPassword:(NSString *)password withCompletionHandler:(void(^)(AWSCognitoIdentityUserSession *session)) completion {
+    dispatch_async(dispatch_get_main_queue(), ^
+                   {
+                       // Get the user from the pool
+                       //    user = [pool currentUser];
+                       user = [pool getUser:username];
+                       
+                       // Make a call to get hold of the users session
+                       [[user getSession:username password:password validationData:nil]
+                        continueWithBlock:^id(AWSTask<AWSCognitoIdentityUserSession *> *task) {
+                            if (task.error) {
+                                NSLog(@"Could not get user session. Error: %@", task.error);
+                                
+                            } else {
+                                NSLog(@"Successfully retrieved user session data");
+                                
+                                // Get the session object from our result
+                                AWSCognitoIdentityUserSession *session = (AWSCognitoIdentityUserSession *) task.result;
+                                NSLog(@"TOKEN: %@", session.idToken.tokenString);
+                                
+                                // Build a token string
+                                NSString *key = [NSString
+                                                 stringWithFormat:@"cognito-idp.%@.amazonaws.com/%@",
+                                                 CognitoIdentityUserPoolRegionString,
+                                                 CognitoIdentityUserPoolId];
+                                NSString *tokenStr = [session.idToken tokenString];
+                                NSDictionary *tokens = [[NSDictionary alloc] initWithObjectsAndKeys:tokenStr, key,  nil];
+                                
+                                CognitoPoolIdentityProvider *idProvider = [[CognitoPoolIdentityProvider alloc] init];
+                                [idProvider addTokens:tokens];
+                                
+                                AWSCognitoCredentialsProvider *creds = [[AWSCognitoCredentialsProvider alloc]
+                                                                        initWithRegionType:CognitoIdentityUserPoolRegion
+                                                                        identityPoolId:CognitoIdentityPoolId
+                                                                        identityProviderManager:idProvider];
+                                
+                                serviceConfig = [[AWSServiceConfiguration alloc]
+                                                 initWithRegion:CognitoIdentityUserPoolRegion
+                                                 credentialsProvider:creds];
+                                
+                                // This sets the default service configuration to allow the API gateway access to user authentication
+                                AWSServiceManager.defaultServiceManager.defaultServiceConfiguration = serviceConfig;
+                                
+                                // Register the pool
+                                [AWSCognitoIdentityUserPool
+                                 registerCognitoIdentityUserPoolWithConfiguration:serviceConfig
+                                 userPoolConfiguration:configuration
+                                 forKey:USER_POOL_NAME];
+                            }
+                            completion(task.result);
+                            return nil;
+                        }];
+                   });
+}
+
 - (void)refreshSession {
     
     // Get the user from the pool
