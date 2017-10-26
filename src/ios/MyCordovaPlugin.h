@@ -6,6 +6,8 @@
 // The hooks for our plugin commands
 - (void)init:(CDVInvokedUrlCommand *)command;
 - (void)login:(CDVInvokedUrlCommand *)command;
+- (void)logout:(CDVInvokedUrlCommand *)command;
+- (void)refresh:(CDVInvokedUrlCommand *)command;
 - (void)echo:(CDVInvokedUrlCommand *)command;
 - (void)getDate:(CDVInvokedUrlCommand *)command;
 

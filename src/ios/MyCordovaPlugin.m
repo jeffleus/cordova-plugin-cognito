@@ -13,6 +13,8 @@
 //	NSString *USER_POOL_NAME = @"FuelStationApp";
 //	NSString *CognitoIdentityUserPoolRegionString = @"us-west-2";
     CognitoCordovaPlugin *cognitoPlugin;
+    AWSCognitoIdentityUserSession *session;
+    NSMutableDictionary* loginDetails;
 
 - (void)pluginInitialize {
 }
@@ -81,9 +83,7 @@
     return sessionDict;
 }
 
-- (void)login:(CDVInvokedUrlCommand *)command {
-    NSMutableDictionary* options = [command.arguments objectAtIndex:0];
-    
+- (void)loginWithOptions:(NSMutableDictionary*) options forCommand:(CDVInvokedUrlCommand *) command {
     NSString *username = [options objectForKey:@"username"];
     NSString *password = [options objectForKey:@"password"];
     NSLog(@"Login as %@, %@", username, password);
@@ -99,13 +99,36 @@
         else {
             NSDictionary *sessionDict = [self getSessionAsDictionary:session];
             pluginResult = [CDVPluginResult
-                                             resultWithStatus:CDVCommandStatus_OK
-                                             messageAsDictionary:sessionDict];
+                            resultWithStatus:CDVCommandStatus_OK
+                            messageAsDictionary:sessionDict];
         }
         //execute the command delete to send the results (success or fail) to the plugin client
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-
+        
     }];
+}
+
+- (void)login:(CDVInvokedUrlCommand *)command {
+    NSMutableDictionary* options = [command.arguments objectAtIndex:0];
+    loginDetails = options;
+
+    [self loginWithOptions:options forCommand:command];
+}
+
+- (void)logout:(CDVInvokedUrlCommand *)command {
+    [cognitoPlugin logout];
+    //create a pluginResult to report back the logout results
+    CDVPluginResult *pluginResult = [CDVPluginResult
+                        resultWithStatus:CDVCommandStatus_OK
+                        messageAsString:@"user was successfully logged out."];
+    //execute the command delete to send the results (success or fail) to the plugin client
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+    
+- (void)refresh:(CDVInvokedUrlCommand *)command {
+    NSMutableDictionary* options = loginDetails;
+    
+    [self loginWithOptions:options forCommand:command];
 }
 
 - (void)getDate:(CDVInvokedUrlCommand *)command {
