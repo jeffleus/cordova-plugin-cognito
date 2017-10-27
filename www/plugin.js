@@ -38,6 +38,12 @@ var MyCordovaPlugin = {
   login: function(loginDetails, cb, ecb) {
     exec(cb, ecb, PLUGIN_NAME, 'login', [loginDetails]);
   }, 
+  logout: function(cb, ecb) {
+    exec(cb, ecb, PLUGIN_NAME, 'logout', []);
+  }, 
+  refresh: function(cb, ecb) {
+    exec(cb, ecb, PLUGIN_NAME, 'refresh', []);
+  }, 
   echo: function(phrase, cb) {
     exec(cb, null, PLUGIN_NAME, 'echo', [phrase]);
   },
